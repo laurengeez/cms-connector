@@ -1000,7 +1000,9 @@ function buildBook(input) {
   pages.push(...coloring, ...patterns, ...ending);
 
   pages.forEach((p, i) => { const d = p.draw; p.draw = c => { d(c); if (i) pageNum(c, i + 1); }; });
-  return { name, letters, from, motifs, pages, cover: COVERS[input.cover] ? input.cover : "purple" };
+  const firstFav = picked.length && FAV[picked[0].id] && FAV[picked[0].id][0];
+  const coverArt = firstFav || ART[letters[0]] || null;
+  return { name, letters, from, motifs, pages, coverArt, cover: COVERS[input.cover] ? input.cover : "purple" };
 }
 
 /* ---------- printed cover (back, spine, front in one spread) ---------- */
@@ -1021,14 +1023,29 @@ function drawCover(c, b) {
 
   // front
   c.save(); c.translate(fx, y0);
-  c.fillStyle = "#fff"; rr(c, 70, 90, W - 140, 620, 40); c.fill();
-  c.lineWidth = 6; c.strokeStyle = INK; c.stroke();
-  textC(c, "A Magical Book", W / 2, 195, 50, 500);
-  outline(c, "All About Me", W / 2, 300, 88, 6, "center", P.accent);
-  outlineMid(c, b.name, W / 2, 520, fitSize(c, b.name, 620, 220), 9, P.main);
-  [[200, 845, 82], [425, 830, 95], [650, 845, 82]].forEach(([x, y, s], i) => motif(c, mot(i), x, y, s, fill(i)));
-  [[300, 995, 46], [550, 995, 46]].forEach(([x, y, s], i) => motif(c, mot(i + 3), x, y, s, fill(i + 3)));
-  [[90, 790], [760, 790], [110, 1010], [740, 1010]].forEach(([x, y]) => motif(c, "star", x, y, 24, "#FFE07A"));
+  if (b.coverArt) {
+    // Title panel on top, the child's favorite drawing framed below
+    c.fillStyle = "#fff"; rr(c, 70, 80, W - 140, 480, 40); c.fill();
+    c.lineWidth = 6; c.strokeStyle = INK; c.stroke();
+    textC(c, "A Magical Book", W / 2, 168, 48, 500);
+    outline(c, "All About Me", W / 2, 262, 84, 6, "center", P.accent);
+    outlineMid(c, b.name, W / 2, 415, fitSize(c, b.name, 620, 190), 9, P.main);
+    c.fillStyle = "#fff"; rr(c, 185, 600, W - 370, 450, 36); c.fill();
+    c.lineWidth = 8; c.strokeStyle = P.main; c.stroke();
+    const img = b.coverArt.img, sc = Math.min(420 / img.width, 400 / img.height);
+    c.drawImage(img, (W - img.width * sc) / 2, 625 + (400 - img.height * sc) / 2, img.width * sc, img.height * sc);
+    [[105, 650, "star"], [745, 650, "heart"], [110, 1000, "heart"], [740, 1000, "star"]].forEach(([x, y, t], i) => motif(c, t, x, y, 32, fill(i)));
+    [[120, 830], [730, 830]].forEach(([x, y]) => motif(c, "star", x, y, 20, "#FFE07A"));
+  } else {
+    c.fillStyle = "#fff"; rr(c, 70, 90, W - 140, 620, 40); c.fill();
+    c.lineWidth = 6; c.strokeStyle = INK; c.stroke();
+    textC(c, "A Magical Book", W / 2, 195, 50, 500);
+    outline(c, "All About Me", W / 2, 300, 88, 6, "center", P.accent);
+    outlineMid(c, b.name, W / 2, 520, fitSize(c, b.name, 620, 220), 9, P.main);
+    [[200, 845, 82], [425, 830, 95], [650, 845, 82]].forEach(([x, y, s], i) => motif(c, mot(i), x, y, s, fill(i)));
+    [[300, 995, 46], [550, 995, 46]].forEach(([x, y, s], i) => motif(c, mot(i + 3), x, y, s, fill(i + 3)));
+    [[90, 790], [760, 790], [110, 1010], [740, 1010]].forEach(([x, y]) => motif(c, "star", x, y, 24, "#FFE07A"));
+  }
   c.restore();
 
   // back (bottom right kept clear)
