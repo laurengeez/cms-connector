@@ -109,5 +109,15 @@ const check = (ok, msg) => { console.log((ok ? "PASS " : "FAIL ") + msg); if (!o
   const ful = calls.find(c => c.body.includes("fulfillmentCreate"));
   check(!!ful && ful.body.includes("9400TEST") && ful.body.includes('"notifyCustomer":true'), "Shopify order marked shipped with tracking, customer emailed");
 
+  // 7. One order with two different children (and 2 copies of one) -> two books in one Lulu job
+  calls.length = 0;
+  const li = (name, qty) => ({ title: "My Name Is Magic: Personalized All About Me Coloring Book", quantity: qty,
+    properties: [{ name: "Child's name", value: name }, { name: "Favorites", value: "Dinosaurs" }, { name: "Cover color", value: "Blue" }] });
+  await processOrder(order({ id: 5550007, admin_graphql_api_id: "gid://shopify/Order/5550007", name: "#1007", line_items: [li("Mia", 1), li("Jack", 2)] }));
+  const two = calls.find(c => c.url.endsWith("/print-jobs/"));
+  const tj = two && JSON.parse(two.body);
+  check(!!tj && tj.line_items.length === 2 && /Mia/.test(tj.line_items[0].title) && /Jack/.test(tj.line_items[1].title) && tj.line_items[1].quantity === 2,
+    "two different children in one order get their own books (Jack x2)");
+
   server.close(); await require("../lib/render").shutdown();
 })().catch(e => { console.error(e); process.exit(1); });

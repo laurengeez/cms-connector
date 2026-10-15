@@ -76,12 +76,18 @@ async function processOrder(order, { force = false } = {}) {
   inFlight.add(id);
 
   try {
-    const quantity = items.reduce((n, li) => n + (li.quantity || 1), 0);
-    const { input, problems, fatal } = toBookInput(order, items[0]);
-    if (fatal) {
-      await tag(gid, ["book-problem"]);
-      await note(gid, `BOOK NOT SENT: ${problems.join(" ")} Please check the order answers.`);
-      return log(`${label}: STOPPED. ${problems.join(" ")}`);
+    // Each book line item can be a different child (its own answers), so build each one.
+    const built = [];
+    const problems = [];
+    for (const li of items) {
+      const r = toBookInput(order, li);
+      if (r.fatal) {
+        await tag(gid, ["book-problem"]);
+        await note(gid, `BOOK NOT SENT: ${r.problems.join(" ")} Please check the order answers.`);
+        return log(`${label}: STOPPED. ${r.problems.join(" ")}`);
+      }
+      problems.push(...r.problems);
+      built.push({ input: r.input, quantity: li.quantity || 1 });
     }
 
     const { addr, missing } = luluAddress(order, cfg.lulu.fallbackPhone);
@@ -92,21 +98,27 @@ async function processOrder(order, { force = false } = {}) {
     if (order.test && (cfg.lulu.env === "production" || !cfg.sendTestOrdersToSandbox)) mode = "files";
     if (!order.test && cfg.lulu.env !== "production") mode = "practice-real";
 
-    log(`${label}: building book for ${input.name} (${input.cover}, ${input.selected.join(", ")})...`);
-    const t0 = Date.now();
-    const book = await renderBook(input, { spine: cfg.lulu.spine });
-    const interiorUrl = saveFile(book.interior, "interior");
-    const coverUrl = saveFile(book.cover, "cover");
-    log(`${label}: book ready, ${book.pages} pages, ${Math.round((Date.now() - t0) / 1000)}s.`);
-    const links = `Interior: ${interiorUrl}\nCover: ${coverUrl}`;
-    const warn = problems.length ? `\nNote: ${problems.join(" ")}` : "";
+    const books = [];
+    for (const b of built) {
+      const input = b.input;
+      log(`${label}: building book for ${input.name} (${input.cover}, ${input.selected.join(", ")})${b.quantity > 1 ? ` x${b.quantity}` : ""}...`);
+      const t0 = Date.now();
+      const book = await renderBook(input, { spine: cfg.lulu.spine });
+      const interiorUrl = saveFile(book.interior, "interior");
+      const coverUrl = saveFile(book.cover, "cover");
+      log(`${label}: book ready, ${book.pages} pages, ${Math.round((Date.now() - t0) / 1000)}s.`);
+      books.push({ name: book.name, pages: book.pages, quantity: b.quantity, interiorUrl, coverUrl,
+        title: `${book.name}'s All About Me Book (${label})` });
+    }
+    const links = books.map(b => `${b.name}${b.quantity > 1 ? ` (x${b.quantity})` : ""} — ${b.pages} pages\nInterior: ${b.interiorUrl}\nCover: ${b.coverUrl}`).join("\n");
+    const warn = problems.length ? `\nNote: ${[...new Set(problems)].join(" ")}` : "";
 
     if (mode !== "send") {
       const why = mode === "files"
         ? (order.test ? "This was a TEST order, so it was not sent to Lulu." : "Files-only mode is on, so it was not sent to Lulu.")
         : "The connector is still in PRACTICE (sandbox) mode, so this REAL order was NOT sent to Lulu. Print it by hand or switch to production and retry.";
       await tag(gid, [mode === "files" ? "book-files-ready" : "book-needs-manual-print"]);
-      await note(gid, `Book files (${book.pages} pages): ${why}\n${links}${warn}`);
+      await note(gid, `Book files: ${why}\n${links}${warn}`);
       return log(`${label}: files only. ${why}`);
     }
 
@@ -116,15 +128,10 @@ async function processOrder(order, { force = false } = {}) {
       return log(`${label}: STOPPED, address missing ${missing.join(", ")}.`);
     }
 
-    const job = await lulu.createPrintJob({
-      externalId: `shopify-${id}`,
-      title: `${book.name}'s All About Me Book (${label})`,
-      quantity,
-      interiorUrl, coverUrl, address: addr,
-    });
+    const job = await lulu.createPrintJob({ externalId: `shopify-${id}`, books, address: addr });
     ensureDirs(); fs.writeFileSync(sentMarker, String(job.id || ""));
     await tag(gid, ["lulu-sent"]);
-    await note(gid, `Sent to Lulu (${cfg.lulu.env}) — print job ${job.id}, ${book.pages} pages.\n${links}${warn}`);
+    await note(gid, `Sent to Lulu (${cfg.lulu.env}) — print job ${job.id}.\n${links}${warn}`);
     log(`${label}: SENT to Lulu ${cfg.lulu.env}, print job ${job.id}.`);
   } catch (e) {
     log(`${label}: ERROR ${e.message}`);
