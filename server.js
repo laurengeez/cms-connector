@@ -205,6 +205,27 @@ async function admin(url, res) {
     log(`Sample book for ${input.name}: ${b.pages} pages in ${Math.round((Date.now() - t0) / 1000)}s`);
     return send(res, 200, `<!doctype html><meta charset="utf-8"><p>Sample book for <b>${esc(b.name)}</b>: ${b.pages} pages, cover ${b.coverInches.map(n => n.toFixed(3)).join(" × ")} in.</p><p><a href="${i}">Open interior PDF</a><br><a href="${c}">Open cover PDF</a></p>`, "text/html; charset=utf-8");
   }
+  if (p === "/admin/lulu-job") {
+    const id = (url.searchParams.get("id") || "").replace(/\D/g, "");
+    if (!id) return send(res, 400, "Add &id=PRINT_JOB_NUMBER to the address.");
+    const L = require("./lib/lulu");
+    const out = [];
+    try {
+      const job = await L.getPrintJob(id);
+      out.push(`Print job ${id}: status ${job.status && job.status.name}${job.status && job.status.messages ? " " + JSON.stringify(job.status.messages) : ""}`);
+      for (const li of job.line_items || []) {
+        out.push(`Book: ${li.title} | format ${li.pod_package_id || (li.printable_normalization || {}).pod_package_id} | pages ${li.page_count} | qty ${li.quantity} | status ${li.status && li.status.name} ${li.status && li.status.messages ? JSON.stringify(li.status.messages) : ""}`);
+      }
+      const c = job.costs || {};
+      out.push("Lulu's charges:\n" + JSON.stringify(c, null, 2));
+      const pages = (job.line_items || [])[0] && job.line_items[0].page_count;
+      if (pages) {
+        const est = await L.costEstimate({ pageCount: pages, address: { ...job.shipping_address, email: undefined } }).catch(e => ({ error: e.message }));
+        out.push(`Price check for ${pages} pages to the same address:\n` + JSON.stringify(est, null, 2));
+      }
+    } catch (e) { out.push("Could not read the job: " + e.message); }
+    return send(res, 200, out.join("\n\n"));
+  }
   if (p === "/admin/setup-lulu-webhook") {
     const r = await lulu.subscribeWebhook(`${cfg.publicUrl}/webhooks/lulu`);
     return send(res, 200, r && r.already ? "Lulu tracking updates were already on." : "Lulu tracking updates are now on.");
