@@ -25,7 +25,7 @@ What it does, automatically:
 | `LULU_CLIENT_KEY`, `LULU_CLIENT_SECRET` | From the Lulu developer site (sandbox and production have different keys) |
 | `LULU_CONTACT_EMAIL` | Your email, for Lulu's messages |
 | `FALLBACK_PHONE` | Your phone, used when a customer leaves phone blank (Lulu requires one) |
-| `LULU_POD_PACKAGE_ID` | Book format. Default `0850X1100BWSTDCO060UW444MXX` = 8.5×11, black & white, coil bound |
+| `LULU_POD_PACKAGE_ID` | Book format. Default `0850X1100BWSTDSS060UW444MXX` = 8.5×11, black & white, stapled (saddle stitch) |
 | `LULU_SHIPPING_LEVEL` | `MAIL` (cheapest, default), `GROUND`, `EXPEDITED`… |
 | `SHOPIFY_STORE_DOMAIN` | e.g. `color-me-spellbound.myshopify.com` |
 | `SHOPIFY_WEBHOOK_SECRET` | The signing key shown under Settings → Notifications → Webhooks |

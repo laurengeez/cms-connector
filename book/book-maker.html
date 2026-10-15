@@ -335,7 +335,8 @@ window.FAV_ART = {
 const W = 850, H = 1100;
 const BLEED = 12.5;          // 0.125 in
 const SAFE = 50;             // 0.5 in: nothing printed closer to the trim
-const MIN_PAGES = 32;        // Lulu paperback minimum
+const MIN_PAGES = 32;        // fullest book feel
+const MAX_PAGES = 48;        // Lulu stapled (saddle stitch) limit; page count kept a multiple of 4
 const INK = "#1a1a1a";
 const SOFT = "#8f8f8f";
 
@@ -983,8 +984,10 @@ function buildBook(input) {
 
   /* pattern pages fill the book out to Lulu's 32-page minimum and an even page count */
   const patterns = [];
+  // Long names: drop favorites coloring pages so the book stays within the stapled-book limit.
+  while (coloring.length > 2 && pages.length + coloring.length + ending.length > MAX_PAGES) coloring.pop();
   let total = pages.length + coloring.length + ending.length;
-  let pad = Math.max(0, MIN_PAGES - total); if ((total + pad) % 2) pad++;
+  let pad = Math.max(0, MIN_PAGES - total); while ((total + pad) % 4) pad++;
   const layouts = [[3, 4], [4, 5], [3, 3]];
   for (let k = 0; k < pad; k++) {
     const [cols, rows] = layouts[k % layouts.length];
