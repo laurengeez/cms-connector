@@ -1,0 +1,16 @@
+{
+  "name": "color-me-spellbound-connector",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Turns paid Shopify book orders into Lulu print jobs, and Lulu shipments into Shopify tracking.",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node test/run-test.js"
+  },
+  "engines": { "node": ">=18" },
+  "dependencies": {
+    "pdf-lib": "1.17.1",
+    "playwright": "1.56.1"
+  }
+}
