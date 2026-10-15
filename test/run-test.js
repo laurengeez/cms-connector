@@ -73,7 +73,7 @@ const check = (ok, msg) => { console.log((ok ? "PASS " : "FAIL ") + msg); if (!o
   const pj = JSON.parse(job.body);
   console.log(JSON.stringify({ ...pj, line_items: pj.line_items.map(l => ({ ...l, printable_normalization: "…urls…" })) }, null, 1));
   check(pj.shipping_address.phone_number === "9185550100", "missing customer phone filled with your phone number");
-  check(pj.line_items[0].pod_package_id === "0850X1100BWSTDSS060UW444MXX", "stapled 8.5x11 format");
+  check(pj.line_items[0].printable_normalization.pod_package_id === "0850X1100BWSTDSS060UW444MXX", "stapled 8.5x11 format");
   check(pj.external_id === "shopify-5550001", "Lulu job is linked to the Shopify order");
 
   const urls = pj.line_items[0].printable_normalization;
