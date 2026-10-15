@@ -2,7 +2,7 @@
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Fredoka:wght@400;500;600&family=Figtree:wght@400;500;600&display=swap">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf-lib/1.17.1/pdf-lib.min.js"></script>
 <style>
 /* Layout: a two-pane workbench — order form and print files on the left, the live book on a paper stage on the right. */
 :root {
@@ -1175,32 +1175,34 @@ let rz; window.addEventListener("resize", () => { clearTimeout(rz); rz = setTime
 
 /* ---------- file export ---------- */
 const buttons = ["dlInterior", "dlCover", "dlHome"].map($);
-const setBusy = v => { busy = v; buttons.forEach(b => { b.disabled = v || !downloads || !window.jspdf; }); };
+const setBusy = v => { busy = v; buttons.forEach(b => { b.disabled = v || !downloads || !window.PDFLib; }); };
 const tick = () => new Promise(r => setTimeout(r, 0));
 const fileBase = () => book.name.replace(/[^A-Za-z]/g, "") || "Book";
 
 async function buildPdf(kind, bk) {
   bk = bk || book;
-  const { jsPDF } = window.jspdf;
+  const { PDFDocument } = window.PDFLib;
+  const doc = await PDFDocument.create();
   const cv = document.createElement("canvas");
+  const jpg = async q => doc.embedJpg(await (await new Promise(r => cv.toBlob(r, "image/jpeg", q))).arrayBuffer());
   if (kind === "cover") {
     const { w, h } = coverSize(bk.pages.length);
-    const doc = new jsPDF({ unit: "in", format: [w / 100, h / 100], orientation: "landscape" });
     renderCover(cv, bk, 3);
-    doc.addImage(cv.toDataURL("image/jpeg", 0.95), "JPEG", 0, 0, w / 100, h / 100);
-    return doc.output("arraybuffer");
+    const img = await jpg(0.95);
+    doc.addPage([w * 0.72, h * 0.72]).drawImage(img, { x: 0, y: 0, width: w * 0.72, height: h * 0.72 });
+  } else {
+    const lulu = kind === "interior";
+    const pw = (lulu ? 8.75 : 8.5) * 72, ph = (lulu ? 11.25 : 11) * 72;
+    for (let i = 0; i < bk.pages.length; i++) {
+      if (bk === book) $("status").textContent = `Building page ${i + 1} of ${bk.pages.length}…`;
+      await tick();
+      renderAt(cv, bk.pages[i], lulu ? 3 : 1.5, lulu ? BLEED : 0);
+      const img = await jpg(0.9);
+      doc.addPage([pw, ph]).drawImage(img, { x: 0, y: 0, width: pw, height: ph });
+    }
   }
-  const lulu = kind === "interior";
-  const pw = lulu ? 8.75 : 8.5, ph = lulu ? 11.25 : 11;
-  const doc = new jsPDF({ unit: "in", format: [pw, ph], orientation: "portrait" });
-  for (let i = 0; i < bk.pages.length; i++) {
-    if (bk === book) $("status").textContent = `Building page ${i + 1} of ${bk.pages.length}…`;
-    await tick();
-    renderAt(cv, bk.pages[i], lulu ? 3 : 1.5, lulu ? BLEED : 0);
-    if (i) doc.addPage([pw, ph], "portrait");
-    doc.addImage(cv.toDataURL("image/jpeg", 0.92), "JPEG", 0, 0, pw, ph);
-  }
-  return doc.output("arraybuffer");
+  cv.width = cv.height = 1;
+  return new Blob([await doc.save()], { type: "application/pdf" });
 }
 /* Used by the order connector: prepare one order's book, then hand over print-ready pages one at a time. */
 let printBook = null; const printCv = document.createElement("canvas");
@@ -1232,7 +1234,7 @@ async function exportForPrint(input, opts) {
   return { pages: bk.pages.length, name: bk.name, interior, cover, coverIn: [w / 100, h / 100] };
 }
 async function exportFile(kind) {
-  if (busy || !book || !downloads || !window.jspdf) return;
+  if (busy || !book || !downloads || !window.PDFLib) return;
   setBusy(true);
   const names = { interior: `${fileBase()}-Lulu-interior.pdf`, cover: `${fileBase()}-Lulu-cover.pdf`, home: `${fileBase()}-All-About-Me.pdf` };
   try {
@@ -1245,7 +1247,7 @@ async function exportFile(kind) {
     const code = e && e.code;
     $("status").textContent = code === "declined" ? "Download cancelled." :
       code === "rate_limited" ? "A download is already waiting for you to confirm." :
-      "The file couldn't be saved here. Try again in a moment.";
+      `The file couldn't be saved (${code || (e && e.message) || "unknown"}). Reload the page and try again.`;
   } finally { setBusy(false); }
 }
 $("dlInterior").addEventListener("click", () => exportFile("interior"));
