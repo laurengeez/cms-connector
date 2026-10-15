@@ -1051,15 +1051,31 @@ function drawCover(c, b) {
   }
   c.restore();
 
-  // back (bottom right kept clear)
+  // back: who it's for, who it's from, and a peek inside (bottom-right corner kept clear)
   c.save(); c.translate(bx, y0);
-  textC(c, "A one-of-a-kind book", W / 2, 230, 44, 500);
-  textC(c, "made just for", W / 2, 290, 44, 500);
-  outlineMid(c, b.name, W / 2, 410, fitSize(c, b.name, 560, 130), 7, P.main);
-  [325, 425, 525].forEach((x, i) => motif(c, "heart", x, 545, 28, i === 1 ? P.accent : "#fff"));
-  textC(c, "Made with love by", W / 2, 680, 40, 500);
-  textC(c, b.from, W / 2, 750, fitSize(c, b.from, 600, 56, 600), 600);
-  motif(c, mot(1), 330, 900, 52, fill(2)); motif(c, mot(2), 520, 900, 52, fill(3));
+  textC(c, "A one-of-a-kind book made just for", W / 2, 150, 38, 500);
+  outlineMid(c, b.name, W / 2, 245, fitSize(c, b.name, 600, 110), 6, P.main);
+  [355, 425, 495].forEach((x, i) => motif(c, "heart", x, 335, 20, i === 1 ? P.accent : "#fff"));
+  textC(c, "Made with love by " + b.from, W / 2, 410, fitSize(c, "Made with love by " + b.from, 640, 36, 600), 600);
+  textC(c, "A peek inside", W / 2, 505, 30, 600, P.main);
+  const peek = [
+    [b.pages.find(p => /^Letter [A-Z]$/.test(p.label)), "A page for every", "letter of their name"],
+    [b.pages.find(p => p.label.startsWith("Maze")), "Mazes, tracing", "& activities"],
+    [b.pages.find(p => p.label.startsWith("Color the")), "Their favorite", "things to color"],
+  ].filter(x => x[0]);
+  const tw = 200, th = tw * H / W, gap = 40, x0 = (W - (peek.length * tw + (peek.length - 1) * gap)) / 2, ty = 540;
+  const tmp = document.createElement("canvas");
+  peek.forEach(([pg, l1, l2], i) => {
+    renderAt(tmp, pg, 0.75, 0);
+    const x = x0 + i * (tw + gap), rot = [-0.04, 0, 0.04][i] || 0;
+    c.save(); c.translate(x + tw / 2, ty + th / 2); c.rotate(rot);
+    c.shadowColor = "rgba(30,20,50,.28)"; c.shadowBlur = 14; c.shadowOffsetY = 6;
+    c.fillStyle = "#fff"; c.fillRect(-tw / 2, -th / 2, tw, th); c.shadowColor = "transparent";
+    c.drawImage(tmp, -tw / 2, -th / 2, tw, th);
+    c.restore();
+    textC(c, l1, x + tw / 2, ty + th + 48, 20, 500);
+    textC(c, l2, x + tw / 2, ty + th + 74, 20, 500);
+  });
   textC(c, "Color Me Spellbound", 90, 1040, 24, 600, INK, "left");
   textC(c, "colormespellbound.com", 90, 1068, 18, 400, INK, "left");
   c.restore();
