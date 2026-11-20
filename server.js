@@ -187,7 +187,7 @@ function statusPage() {
   return `<!doctype html><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Connector status</title>
 <style>body{font:16px/1.5 system-ui,sans-serif;max-width:860px;margin:24px auto;padding:0 16px;color:#222}td{padding:4px 12px 4px 0;vertical-align:top}pre{background:#f4f4f6;padding:12px;border-radius:8px;white-space:pre-wrap;font-size:13px}a{color:#6b3fa0}</style>
 <h1>Color Me Spellbound connector</h1><table>${rows.map(([a, b]) => `<tr><td><b>${esc(a)}</b></td><td>${esc(b)}</td></tr>`).join("")}</table>
-<p><a href="/admin/check?key=${k}">Check connections</a> · <a href="/admin/test-book?key=${k}&name=Avery&color=pink&favorites=unicorns,ballet,pets">Build a sample book</a> · <a href="/admin/setup-lulu-webhook?key=${k}">Turn on Lulu tracking updates</a></p>
+<p><a href="/admin/check?key=${k}">Check connections</a> · <a href="/admin/test-book?key=${k}&name=Avery&color=pink&favorites=unicorns,ballet,pets">Build a sample book</a> · <a href="/admin/test-book?key=${k}&name=Avery&color=red&favorites=unicorns,flowers,pets&edition=christmas">Build a Christmas sample</a> · <a href="/admin/setup-lulu-webhook?key=${k}">Turn on Lulu tracking updates</a></p>
 <h2>Recent activity</h2><pre>${esc(logLines.slice(-60).reverse().join("\n") || "Nothing yet.")}</pre>`;
 }
 
@@ -205,7 +205,7 @@ async function admin(url, res) {
   }
   if (p === "/admin/test-book") {
     const fav = (url.searchParams.get("favorites") || "unicorns,flowers,pets").split(",").filter(f => INTERESTS.some(([id]) => id === f)).slice(0, 3);
-    const input = { name: url.searchParams.get("name") || "Avery", cover: url.searchParams.get("color") || "purple", from: url.searchParams.get("from") || "Mimi", meaning: url.searchParams.get("meaning") || "", words: url.searchParams.get("words") || "", selected: fav.length ? fav : ["unicorns"] };
+    const input = { name: url.searchParams.get("name") || "Avery", cover: url.searchParams.get("color") || "purple", from: url.searchParams.get("from") || "Mimi", meaning: url.searchParams.get("meaning") || "", words: url.searchParams.get("words") || "", selected: fav.length ? fav : ["unicorns"], edition: url.searchParams.get("edition") === "christmas" ? "christmas" : "regular" };
     const t0 = Date.now();
     const b = await renderBook(input, { spine: cfg.lulu.spine });
     const i = saveFile(b.interior, "sample-interior"), c = saveFile(b.cover, "sample-cover");

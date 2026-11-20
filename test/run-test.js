@@ -119,5 +119,13 @@ const check = (ok, msg) => { console.log((ok ? "PASS " : "FAIL ") + msg); if (!o
   check(!!tj && tj.line_items.length === 2 && /Mia/.test(tj.line_items[0].title) && /Jack/.test(tj.line_items[1].title) && tj.line_items[1].quantity === 2,
     "two different children in one order get their own books (Jack x2)");
 
+  // 8. A Christmas Edition product builds the holiday book
+  const { toBookInput } = require("../lib/map");
+  const xo = order({ line_items: [{ title: "My Name Is Magic: Christmas Edition", quantity: 1, properties: [] }] });
+  check(toBookInput(xo, xo.line_items[0]).input.edition === "christmas" && toBookInput(order(), order().line_items[0]).input.edition === "regular",
+    "Christmas Edition product is detected; the regular book stays regular");
+  const xb = await require("../lib/render").renderBook({ ...toBookInput(xo, xo.line_items[0]).input }, { spine: 0 });
+  check(xb.pages % 4 === 0 && xb.pages <= 48, `Christmas book built: ${xb.pages} pages`);
+
   server.close(); await require("../lib/render").shutdown();
 })().catch(e => { console.error(e); process.exit(1); });
